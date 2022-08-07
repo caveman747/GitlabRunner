@@ -106,24 +106,63 @@ class CreateUser(tk.Canvas):
 
         def CreatePassword():
             password = self.canvas.passwordEntry.get()
+            username = self.canvas.usernameEntry.get()
 
-            subprocess.run([])
+            encoded_password = password.encode('utf-8')
+
+            changePass = subprocess.run(["passwd", username], input=encoded_password)
 
         def WarnUser():
             self.canvas.Warning = tk.Label(text="An Ubuntu username can contain only the _ and - special characters. \n Please try again")
             self.canvas.Warning.pack()
 
-        CreateAccountButton = tk.Button(self, text="Create Account", command= lambda: CreateUser())
+        CreateAccountButton = tk.Button(self, text="Create Account and Move On", command= lambda: [CreateUser(), CreatePassword(), master.switch_Canvas(DownloadGitlab)])
         CreateAccountButton.pack()
 
 
         self.canvas.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
 
 
-# class CreateUser(tk.Canvas):
-#     def __init__(self, master, *args, **kwargs):
-#         tk.Frame.__init__(self, master, *args, **kwargs)
-#         self.canvas = tk.Canvas(self, height=200 ,width=430)
-#
-#         Explanation = tk.Label(self.canvas, text="Next up, we need to create user account explicitly for the Gitlab Runner software")
+class DownloadGitlab(tk.Canvas):
+    def __init__(self, master, *args, **kwargs):
+        tk.Frame.__init__(self, master, *args, **kwargs)
+        self.canvas = tk.Canvas(self, height=200 ,width=430)
+
+        Explanation = tk.Label(self.canvas, text="Time to download and install Gitlab!")
         Explanation.pack()
+
+        def DownloadInstall():
+
+
+            subprocess.run(["sudo", "curl", "-L", "--output" , "/usr/local/bin/gitlab-runner", "https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-linux-amd64"])
+            pb["value"] += 45
+            txt["text"] = pb['value'], '%'
+            self.canvas.update_idletasks()
+
+            subprocess.run(["sudo", "chmod", "+x", "/usr/local/bin/gitlab-runner"])
+            pb["value"] += 5
+            txt["text"] = pb['value'], '%'
+            self.canvas.update_idletasks()
+
+            #for some reason I need to add the shell=True part would love to know why
+            subprocess.run(["cd", "/usr/local/bin/"], shell=True)
+            pb["value"] += 5
+            txt["text"] = pb['value'], '%'
+            self.canvas.update_idletasks()
+
+            subprocess.run(["sudo", "gitlab-runner", "install", "--user=gitlab-runner", "--working-directory=/home/gitlab-runner"])
+            pb["value"] += 45
+            txt["text"] = pb['value'], '%'
+            self.canvas.update_idletasks()
+
+
+        pb = Progressbar(self.canvas, orient=tk.HORIZONTAL, length=100, mode="determinate")
+        pb.pack()
+
+        txt = tk.Label(self.canvas, text="0%", bg="#345", fg="#fff")
+        txt.pack()
+
+        self.canvas.DownloadInstallButton = tk.Button(self, text="Click me to download and install Gitlab", command=lambda: DownloadInstall())
+        self.canvas.DownloadInstallButton.pack()
+
+        self.canvas.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
