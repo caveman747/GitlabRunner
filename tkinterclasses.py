@@ -53,7 +53,7 @@ class StartUpPage(tk.Canvas):
         def installPackages():
             list = ["curl", "git"]
             for i in list:
-                subprocess.run(["apt-get", "install", i])
+                subprocess.run(["apt-get", "install", "-y", i])
                 pb["value"] += 50
                 self.canvas.update_idletasks()
                 txt["text"] = pb['value'], '%'
@@ -78,17 +78,52 @@ class CreateUser(tk.Canvas):
         tk.Frame.__init__(self, master, *args, **kwargs)
         self.canvas = tk.Canvas(self, height=200 ,width=430)
 
-        Explanation = tk.Label(self.canvas, text="Next up, we need to create user account explicitly for the Gitlab Runner software")
-        Explanation.pack()
+        UsernameExplanation = tk.Label(self.canvas, text="Next up, we need to create user account explicitly for the Gitlab Runner software")
+        UsernameExplanation.pack()
 
         self.canvas.usernameEntry = tk.Entry(self.canvas)
         self.canvas.usernameEntry.pack()
-        def CreateAccount():
+
+        PasswordExplanation = tk.Label(self.canvas, text="Enter a password below")
+        PasswordExplanation.pack()
+
+
+        self.canvas.passwordEntry = tk.Entry(self.canvas)
+        self.canvas.passwordEntry.pack()
+        def CreateUser():
+
+            special_characters = ["\"", "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "+","?","=", ",", "<",">","/"]
+
+            username = self.canvas.usernameEntry.get()
+
+            if any(c in special_characters for c in username):
+                WarnUser()
+
+
+
             username = self.canvas.usernameEntry.get()
             subprocess.run(["sudo", "useradd", "--comment", username, "--create-home", username, "--shell", "/bin/bash"])
 
-        CreateAccountButton = tk.Button(self, text="Create Account", command= lambda: CreateAccount())
+        def CreatePassword():
+            password = self.canvas.passwordEntry.get()
+
+            subprocess.run([])
+
+        def WarnUser():
+            self.canvas.Warning = tk.Label(text="An Ubuntu username can contain only the _ and - special characters. \n Please try again")
+            self.canvas.Warning.pack()
+
+        CreateAccountButton = tk.Button(self, text="Create Account", command= lambda: CreateUser())
         CreateAccountButton.pack()
 
 
         self.canvas.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
+
+
+# class CreateUser(tk.Canvas):
+#     def __init__(self, master, *args, **kwargs):
+#         tk.Frame.__init__(self, master, *args, **kwargs)
+#         self.canvas = tk.Canvas(self, height=200 ,width=430)
+#
+#         Explanation = tk.Label(self.canvas, text="Next up, we need to create user account explicitly for the Gitlab Runner software")
+        Explanation.pack()
