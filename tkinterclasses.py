@@ -13,7 +13,7 @@ class StartingBlock(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
         self._mainCanvas = None
-        self.title("AdJoiner")
+        self.title("StartingBlock")
         # The dictionary to hold the class type to switch to
         # Each new class passed here, will only have instance or object associated with it (i.e the result of the Key)
         self._allCanvases = dict()
@@ -99,8 +99,6 @@ class CreateUser(tk.Canvas):
             if any(c in special_characters for c in username):
                 WarnUser()
 
-
-
             username = self.canvas.usernameEntry.get()
             subprocess.run(["sudo", "useradd", "--comment", username, "--create-home", username, "--shell", "/bin/bash"])
 
@@ -108,22 +106,40 @@ class CreateUser(tk.Canvas):
             password = self.canvas.passwordEntry.get()
             username = self.canvas.usernameEntry.get()
 
+            #encode string for use as a psuedo file to pass as stdin to passwd commmand below
             encoded_password = password.encode('utf-8')
 
-            changePass = subprocess.run(["passwd", username], input=encoded_password)
+            tempPasswordfile = open(passwordtemp, "w")
+            tempPasswordfile.write(encoded_password)
+
+            subprocess.run(["passwd", username], input=encoded_password)
+
+            username = self.canvas.usernameEntry.get()
+
+            subprocess.run(["sudo", "su", "-S", "<", tempPasswordfile])
+            subprocess.run(["ssh-keygen", "-A"])
+            subprocess.run(["eval", "\"$(ssh-agent)\""], shell=True)
+            subprocess.run(["ssh-add"])
+
+        def PermissionSet():
+            username = self.canvas.usernameEntry.get()
+            sudoerfileLocation = "/etc/sudoers.d" + username
+            sudoerfile = open(sudoerfileLocation, "w")
+            sudoerfile.write("gitlab-runner ALL=(ALL) NOPASSWD: /usr/bin/apt, /usr/bin/snap")
+            sudoerfile.close()
+
 
         def WarnUser():
             self.canvas.Warning = tk.Label(text="An Ubuntu username can contain only the _ and - special characters. \n Please try again")
             self.canvas.Warning.pack()
 
-        CreateAccountButton = tk.Button(self, text="Create Account and Move On", command= lambda: [CreateUser(), CreatePassword(), master.switch_Canvas(DownloadGitlab)])
+        CreateAccountButton = tk.Button(self, text="Create Account and Move On", command= lambda: [CreateUser(), CreatePassword(), PermissionSet(), master.switch_Canvas(InstallGitlab)])
         CreateAccountButton.pack()
 
 
         self.canvas.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
 
-
-class DownloadGitlab(tk.Canvas):
+class InstallGitlab(tk.Canvas):
     def __init__(self, master, *args, **kwargs):
         tk.Frame.__init__(self, master, *args, **kwargs)
         self.canvas = tk.Canvas(self, height=200 ,width=430)
@@ -132,7 +148,6 @@ class DownloadGitlab(tk.Canvas):
         Explanation.pack()
 
         def DownloadInstall():
-
 
             subprocess.run(["sudo", "curl", "-L", "--output" , "/usr/local/bin/gitlab-runner", "https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-linux-amd64"])
             pb["value"] += 45
@@ -162,7 +177,48 @@ class DownloadGitlab(tk.Canvas):
         txt = tk.Label(self.canvas, text="0%", bg="#345", fg="#fff")
         txt.pack()
 
-        self.canvas.DownloadInstallButton = tk.Button(self, text="Click me to download and install Gitlab", command=lambda: DownloadInstall())
+        self.canvas.DownloadInstallButton = tk.Button(self.canvas, text="Click me to download and install Gitlab", command=lambda: [DownloadInstall(), master.switch_Canvas(GetRegKey)])
         self.canvas.DownloadInstallButton.pack()
 
         self.canvas.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
+
+class GetRegKey(tk.Canvas):
+    def __init__(self, master, *args, **kwargs):
+        tk.Frame.__init__(self, master, *args, **kwargs)
+        self.canvas = tk.Canvas(self, height=200 ,width=430)
+
+        Explanation = tk.Label(self.canvas, text="Now we need to register this runner, copy and paste the URL and token in the appropriate entry boxes")
+        Explanation.pack()
+
+
+        URLExplanation = tk.Label(self.canvas, text="Enter the Gitlab(?) URL in below:")
+        URLExplanation.pack()
+        self.canvas.URLEntry = tk.Entry(self.canvas)
+        self.canvas.URLEntry.pack()
+
+        TokenExplanation = tk.Label(text="Enter the token below")
+        TokenExplanation.pack()
+        self.canvas.TokenEntry = tk.Entry(self.canvas)
+        self.canvas.TokenEntry.pack()
+        def DownloadInstall():
+            URL = self.canvas.URLEntry.get()
+            Token = self.canvas.TokenEntry.get()
+
+            subprocess.run(["sudo", "gitlab-runner", "register", "--url", URL, "--registration-token", Token ])
+
+
+        RegisterRunner = tk.Button(self.canvas, text="Register!", command=lambda:[DownloadInstall()] )
+        RegisterRunner.pack()
+
+        self.canvas.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
+
+
+
+
+
+
+
+
+
+
+
