@@ -1,10 +1,10 @@
-
 #GUI related libraries
 import tkinter as tk
 from tkinter.ttk import Progressbar
 
-#OS interaction libraries
-import subprocess
+#system management
+import pwd, os, subprocess
+
 from tkinter.ttk import Progressbar
 #the skeleton of this is ripped directly from the answer to this stack overflow question
 #https://stackoverflow.com/questions/63017238/how-to-switch-between-different-tkinter-canvases-from-a-start-up-page-and-return
@@ -107,27 +107,32 @@ class CreateUser(tk.Canvas):
             username = self.canvas.usernameEntry.get()
 
             #encode string for use as a psuedo file to pass as stdin to passwd commmand below
-            encoded_password = password.encode('utf-8')
 
-            tempPasswordfile = open(passwordtemp, "w")
-            tempPasswordfile.write(encoded_password)
-
-            subprocess.run(["passwd", username], input=encoded_password)
-
-            username = self.canvas.usernameEntry.get()
-
-            subprocess.run(["sudo", "su", "-S", "<", tempPasswordfile])
-            subprocess.run(["ssh-keygen", "-A"])
-            subprocess.run(["eval", "\"$(ssh-agent)\""], shell=True)
-            subprocess.run(["ssh-add"])
+            changePassword = subprocess.Popen(["passwd", username], stdin=subprocess.PIPE)
+            #I had to use the same line of code twice below because the passwd command asks for password change confirmation
+            changePassword.stdin.write('{}\n'.format(password).encode('utf-8'))
+            changePassword.stdin.write('{}\n'.format(password).encode('utf-8'))
+            changePassword.stdin.flush()
 
         def PermissionSet():
             username = self.canvas.usernameEntry.get()
-            sudoerfileLocation = "/etc/sudoers.d" + username
-            sudoerfile = open(sudoerfileLocation, "w")
-            sudoerfile.write("gitlab-runner ALL=(ALL) NOPASSWD: /usr/bin/apt, /usr/bin/snap")
+            sudoerfileLocation = "/etc/sudoers"
+            sudoerfile = open(sudoerfileLocation, "a")
+            PermString = username + " ALL=(ALL) NOPASSWD: /usr/bin/apt, /usr/bin/snap"
+            sudoerfile.write(PermString)
             sudoerfile.close()
 
+        def CreateSSHKey():
+            username = self.canvas.usernameEntry
+            #chaning to gitlab-runner user to create ssh key
+            uid = pwd.getpwnam(username)[2]
+            os.setuid(uid)
+
+            SSHLoc = "/home/" + username + "/ssh_key"
+
+            subprocess.run(["ssh-keygen", "-t", "rsa", "-b", "2048", "-P", password, "-f", SSHLoc])
+            subprocess.run(["eval", "\"$(ssh-agent)\""], shell=True)
+            subprocess.run(["ssh-add", SSHLoc])
 
         def WarnUser():
             self.canvas.Warning = tk.Label(text="An Ubuntu username can contain only the _ and - special characters. \n Please try again")
@@ -170,6 +175,12 @@ class InstallGitlab(tk.Canvas):
             txt["text"] = pb['value'], '%'
             self.canvas.update_idletasks()
 
+            with open("/etc/gitlab-runner/config.toml", 'r') as fin:
+                data = fin.read().splitlines(True)
+            with open('/etc/gitlab-runner/config.toml', 'w') as fout:
+                fout.writelines(data[1:])
+                fout.writelines("\n concurrent = 5")
+
 
         pb = Progressbar(self.canvas, orient=tk.HORIZONTAL, length=100, mode="determinate")
         pb.pack()
@@ -209,6 +220,8 @@ class GetRegKey(tk.Canvas):
 
         RegisterRunner = tk.Button(self.canvas, text="Register!", command=lambda:[DownloadInstall()] )
         RegisterRunner.pack()
+
+
 
         self.canvas.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
 
