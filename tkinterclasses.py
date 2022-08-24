@@ -117,7 +117,7 @@ class CreateUser(tk.Canvas):
 
         def PermissionSet():
             username = self.canvas.usernameEntry.get()
-            sudoerfileLocation = "/etc/sudoers"
+            sudoerfileLocation = "/etc/sudoers/"
             sudoerfile = open(sudoerfileLocation, "a")
             PermString = username + " ALL=(ALL) NOPASSWD: /usr/bin/apt, /usr/bin/snap"
             sudoerfile.write(PermString)
@@ -126,16 +126,22 @@ class CreateUser(tk.Canvas):
         def CreateSSHKey():
             username = self.canvas.usernameEntry.get()
             password = self.canvas.usernameEntry.get()
-            # chaning to gitlab-runner user to create ssh key
+            # changing to gitlab-runner user to create ssh key
             uid = pwd.getpwnam(username)[2]
             os.setuid(uid)
 
             SSHLoc = "/home/" + username + "/ssh_key"
 
             subprocess.run(["ssh-keygen", "-t", "rsa", "-b", "2048", "-P", password, "-f", SSHLoc])
-            #subprocess.run(["eval", "\'$(ssh-agent)\'"], shell=True)
-            exec(open("./Jump.py").read())
+
+        def startSSH(cls) -> 'SshAgent':
+            username = self.canvas.usernameEntry.get()
+            SSHLoc = "/home/" + username + "/ssh_key"
+            print("Starting ssh-agent")
+            output = subprocess.check_output(['ssh-agent', '-s'])
+            agent_env = cls.parse_agent_env(output)
             subprocess.run(["ssh-add", SSHLoc])
+            return cls(agent_env)
 
         def WarnUser():
             self.canvas.Warning = tk.Label(
@@ -143,7 +149,7 @@ class CreateUser(tk.Canvas):
             self.canvas.Warning.pack()
 
         CreateAccountButton = tk.Button(self, text="Create Account and Move On",
-                                        command=lambda: [CreateUser(), CreatePassword(), CreateSSHKey(), PermissionSet(),
+                                        command=lambda: [CreateUser(), CreatePassword(), PermissionSet(), CreateSSHKey(), startSSH(),
                                                          master.switch_Canvas(InstallGitlab)])
         CreateAccountButton.pack()
 
