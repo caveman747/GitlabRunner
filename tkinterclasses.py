@@ -1,13 +1,13 @@
-#GUI related libraries
+# GUI related libraries
 import tkinter as tk
 from tkinter.ttk import Progressbar
 
-#system management
+# system management
 import pwd, os, subprocess
 
 from tkinter.ttk import Progressbar
-#the skeleton of this is ripped directly from the answer to this stack overflow question
-#https://stackoverflow.com/questions/63017238/how-to-switch-between-different-tkinter-canvases-from-a-start-up-page-and-return
+# the skeleton of this is ripped directly from the answer to this stack overflow question
+# https://stackoverflow.com/questions/63017238/how-to-switch-between-different-tkinter-canvases-from-a-start-up-page-and-return
 
 class StartingBlock(tk.Tk):
     def __init__(self):
@@ -41,13 +41,13 @@ class StartingBlock(tk.Tk):
         # and make it the 'default' or current one.
         self._mainCanvas = canvas
 
-
 class StartUpPage(tk.Canvas):
     def __init__(self, master, *args, **kwargs):
         tk.Frame.__init__(self, master, *args, **kwargs)
-        self.canvas = tk.Canvas(self, height=200 ,width=430)
+        self.canvas = tk.Canvas(self, height=200, width=430)
 
-        Explanation = tk.Label(self.canvas, text="Welcome to StartingBlock! \n This program was made to help setting up a Gitlab Runner that much easier \n Click Get Started to download dependencies")
+        Explanation = tk.Label(self.canvas,
+                               text="Welcome to StartingBlock! \n This program was made to help setting up a Gitlab Runner that much easier \n Click Get Started to download dependencies")
         Explanation.pack()
 
         def installPackages():
@@ -59,26 +59,26 @@ class StartUpPage(tk.Canvas):
                 txt["text"] = pb['value'], '%'
                 self.canvas.update_idletasks()
 
-
         pb = Progressbar(self.canvas, orient=tk.HORIZONTAL, length=100, mode="determinate")
         pb.pack()
 
-        txt = tk.Label(self.canvas, text="0%", bg="#345",fg="#fff")
+        txt = tk.Label(self.canvas, text="0%", bg="#345", fg="#fff")
         txt.pack()
 
-        StartDownload = tk.Button(self.canvas, text="Install required packages and move on to the next step", command= lambda: [installPackages(), master.switch_Canvas(CreateUser)])
+        StartDownload = tk.Button(self.canvas,
+                                  text="Install required packages and move on to the next step",
+                                  command=lambda: [installPackages(), master.switch_Canvas(CreateUser)])
         StartDownload.pack()
 
-
         self.canvas.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
-
 
 class CreateUser(tk.Canvas):
     def __init__(self, master, *args, **kwargs):
         tk.Frame.__init__(self, master, *args, **kwargs)
-        self.canvas = tk.Canvas(self, height=200 ,width=430)
+        self.canvas = tk.Canvas(self, height=200, width=430)
 
-        UsernameExplanation = tk.Label(self.canvas, text="Next up, we need to create user account explicitly for the Gitlab Runner software")
+        UsernameExplanation = tk.Label(self.canvas,
+                                       text="Next up, we need to create user account explicitly for the Gitlab Runner software")
         UsernameExplanation.pack()
 
         self.canvas.usernameEntry = tk.Entry(self.canvas)
@@ -87,12 +87,12 @@ class CreateUser(tk.Canvas):
         PasswordExplanation = tk.Label(self.canvas, text="Enter a password below")
         PasswordExplanation.pack()
 
-
         self.canvas.passwordEntry = tk.Entry(self.canvas)
         self.canvas.passwordEntry.pack()
-        def CreateUser():
 
-            special_characters = ["\"", "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "+","?","=", ",", "<",">","/"]
+        def CreateUser():
+            special_characters = ["\"", "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "+", "?", "=",
+                                  ",", "<", ">", "/"]
 
             username = self.canvas.usernameEntry.get()
 
@@ -100,16 +100,17 @@ class CreateUser(tk.Canvas):
                 WarnUser()
 
             username = self.canvas.usernameEntry.get()
-            subprocess.run(["sudo", "useradd", "--comment", username, "--create-home", username, "--shell", "/bin/bash"])
+            subprocess.run(["sudo", "useradd", "--comment", username, "--create-home", username, "--shell",
+                            "/bin/bash"])
 
         def CreatePassword():
             password = self.canvas.passwordEntry.get()
             username = self.canvas.usernameEntry.get()
 
-            #encode string for use as a psuedo file to pass as stdin to passwd commmand below
+            # encode string for use as a psuedo file to pass as stdin to passwd commmand below
 
             changePassword = subprocess.Popen(["passwd", username], stdin=subprocess.PIPE)
-            #I had to use the same line of code twice below because the passwd command asks for password change confirmation
+            # I had to use the same line of code twice below because the passwd command asks for password change confirmation
             changePassword.stdin.write('{}\n'.format(password).encode('utf-8'))
             changePassword.stdin.write('{}\n'.format(password).encode('utf-8'))
             changePassword.stdin.flush()
@@ -123,38 +124,43 @@ class CreateUser(tk.Canvas):
             sudoerfile.close()
 
         def CreateSSHKey():
-            username = self.canvas.usernameEntry
-            #chaning to gitlab-runner user to create ssh key
+            username = self.canvas.usernameEntry.get()
+            password = self.canvas.usernameEntry.get()
+            # chaning to gitlab-runner user to create ssh key
             uid = pwd.getpwnam(username)[2]
             os.setuid(uid)
 
             SSHLoc = "/home/" + username + "/ssh_key"
 
             subprocess.run(["ssh-keygen", "-t", "rsa", "-b", "2048", "-P", password, "-f", SSHLoc])
-            subprocess.run(["eval", "\"$(ssh-agent)\""], shell=True)
+            #subprocess.run(["eval", "\'$(ssh-agent)\'"], shell=True)
+            exec(open("./Jump.py").read())
             subprocess.run(["ssh-add", SSHLoc])
 
         def WarnUser():
-            self.canvas.Warning = tk.Label(text="An Ubuntu username can contain only the _ and - special characters. \n Please try again")
+            self.canvas.Warning = tk.Label(
+                text="An Ubuntu username can contain only the _ and - special characters. \n Please try again")
             self.canvas.Warning.pack()
 
-        CreateAccountButton = tk.Button(self, text="Create Account and Move On", command= lambda: [CreateUser(), CreatePassword(), PermissionSet(), master.switch_Canvas(InstallGitlab)])
+        CreateAccountButton = tk.Button(self, text="Create Account and Move On",
+                                        command=lambda: [CreateUser(), CreatePassword(), CreateSSHKey(), PermissionSet(),
+                                                         master.switch_Canvas(InstallGitlab)])
         CreateAccountButton.pack()
-
 
         self.canvas.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
 
 class InstallGitlab(tk.Canvas):
     def __init__(self, master, *args, **kwargs):
         tk.Frame.__init__(self, master, *args, **kwargs)
-        self.canvas = tk.Canvas(self, height=200 ,width=430)
+        self.canvas = tk.Canvas(self, height=200, width=430)
 
-        Explanation = tk.Label(self.canvas, text="Time to download and install Gitlab!")
+        Explanation = tk.Label(self.canvas, text="Next, we need to install Gitlab and set job concurrency. \n"
+                                                 "Enter how many jobs you would like this runner to process at once.")
         Explanation.pack()
 
         def DownloadInstall():
-
-            subprocess.run(["sudo", "curl", "-L", "--output" , "/usr/local/bin/gitlab-runner", "https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-linux-amd64"])
+            subprocess.run(["sudo", "curl", "-L", "--output", "/usr/local/bin/gitlab-runner",
+                            "https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-linux-amd64"])
             pb["value"] += 45
             txt["text"] = pb['value'], '%'
             self.canvas.update_idletasks()
@@ -164,22 +170,32 @@ class InstallGitlab(tk.Canvas):
             txt["text"] = pb['value'], '%'
             self.canvas.update_idletasks()
 
-            #for some reason I need to add the shell=True part would love to know why
+            # for some reason I need to add the shell=True part would love to know why
             subprocess.run(["cd", "/usr/local/bin/"], shell=True)
             pb["value"] += 5
             txt["text"] = pb['value'], '%'
             self.canvas.update_idletasks()
 
-            subprocess.run(["sudo", "gitlab-runner", "install", "--user=gitlab-runner", "--working-directory=/home/gitlab-runner"])
+            subprocess.run(["sudo", "gitlab-runner", "install", "--user=gitlab-runner",
+                            "--working-directory=/home/gitlab-runner"])
             pb["value"] += 45
             txt["text"] = pb['value'], '%'
             self.canvas.update_idletasks()
+
+
+        NumJobs = tk.Entry(self.canvas)
+        NumJobs.pack()
+
+        def Concurrency():
+            ConcurrentJobs = NumJobs.get()
+
+            print(ConcurrentJobs)
 
             with open("/etc/gitlab-runner/config.toml", 'r') as fin:
                 data = fin.read().splitlines(True)
             with open('/etc/gitlab-runner/config.toml', 'w') as fout:
                 fout.writelines(data[1:])
-                fout.writelines("\n concurrent = 5")
+                fout.writelines("\n concurrent = " + ConcurrentJobs)
 
 
         pb = Progressbar(self.canvas, orient=tk.HORIZONTAL, length=100, mode="determinate")
@@ -188,19 +204,23 @@ class InstallGitlab(tk.Canvas):
         txt = tk.Label(self.canvas, text="0%", bg="#345", fg="#fff")
         txt.pack()
 
-        self.canvas.DownloadInstallButton = tk.Button(self.canvas, text="Click me to download and install Gitlab", command=lambda: [DownloadInstall(), master.switch_Canvas(GetRegKey)])
+        self.canvas.DownloadInstallButton = tk.Button(self.canvas,
+                                                      text="Click me to download and install Gitlab",
+                                                      command=lambda: [DownloadInstall(), Concurrency(),
+                                                                       master.switch_Canvas(GetRegKey)])
         self.canvas.DownloadInstallButton.pack()
+
 
         self.canvas.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
 
 class GetRegKey(tk.Canvas):
     def __init__(self, master, *args, **kwargs):
         tk.Frame.__init__(self, master, *args, **kwargs)
-        self.canvas = tk.Canvas(self, height=200 ,width=430)
+        self.canvas = tk.Canvas(self, height=200, width=430)
 
-        Explanation = tk.Label(self.canvas, text="Now we need to register this runner, copy and paste the URL and token in the appropriate entry boxes")
+        Explanation = tk.Label(self.canvas,
+                               text="Now we need to register this runner, copy and paste the URL and token in the appropriate entry boxes")
         Explanation.pack()
-
 
         URLExplanation = tk.Label(self.canvas, text="Enter the Gitlab(?) URL in below:")
         URLExplanation.pack()
@@ -211,17 +231,16 @@ class GetRegKey(tk.Canvas):
         TokenExplanation.pack()
         self.canvas.TokenEntry = tk.Entry(self.canvas)
         self.canvas.TokenEntry.pack()
+
         def DownloadInstall():
             URL = self.canvas.URLEntry.get()
             Token = self.canvas.TokenEntry.get()
 
-            subprocess.run(["sudo", "gitlab-runner", "register", "--url", URL, "--registration-token", Token ])
+            subprocess.run(
+                ["sudo", "gitlab-runner", "register", "--url", URL, "--registration-token", Token])
 
-
-        RegisterRunner = tk.Button(self.canvas, text="Register!", command=lambda:[DownloadInstall()] )
+        RegisterRunner = tk.Button(self.canvas, text="Register!", command=lambda: [DownloadInstall()])
         RegisterRunner.pack()
-
-
 
         self.canvas.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
 
